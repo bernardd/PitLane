@@ -23,89 +23,46 @@ namespace PitLane
 			Debug.Log ("OnCreated()");
 			base.OnCreated (loading);
 
-			UIComponent publicTransportPanel = UIUtils.Instance.FindComponent<UIComponent>("PublicTransportPanel", null, UIUtils.FindOptions.NameContains);
-
-			foreach (UIComponent c in publicTransportPanel.components) {
-				Debug.Log ("Here 0 " + c.name);
-				if (c.name == "GroupToolstrip") {
-					Debug.Log ("Here 1");
-
-					//c.AddUIComponent<PitLaneButton> ();
-				}
-			}
-					
-
-			if (publicTransportPanel == null || !publicTransportPanel.gameObject.activeInHierarchy) return;
-
-			//publicTransportPanel.AddUIComponent<PitLaneButton> ();
-
 			Debug.Log ("OnCreated() complete");
 		}
 
 	}
+	public class ThreadingExtension : ThreadingExtensionBase {
+		public static ThreadingExtension Instance { get; private set; }
 
+		PitLaneUI ui = new PitLaneUI();
+		bool loadingLevel = false;
 
-	public class PitLaneButton : UIButton {
-		PitLaneButton() {
-			name = "PitLaneButton";
-			tooltip = "Pit Lane management";
-			string[] spriteNames = {
-				"PitLaneButtonBg", 
-				"PitLaneButtonBgHovered", 
-				"PitLaneButtonBgPressed", 
-				//		"CrossingsIcon", 
-				//		"CrossingsIconPressed", 
-			};
-
-
-
-		//	UITextureAtlas atlas = CreateTextureAtlas("buttons.png", "PitLaneUI", tabTemplate.atlas.material, 64, 34, spriteNames);
+		public void OnLevelUnloading() {
+			ui.DestroyView();
+			loadingLevel = true;
 		}
 
-		UITextureAtlas CreateTextureAtlas(string textureFile, string atlasName, Material baseMaterial, int spriteWidth, int spriteHeight, string[] spriteNames) {
+		public void OnLevelLoaded(LoadMode mode) {
+			loadingLevel = false;
+			Debug.Log("OnLevelLoaded");
+		}
 
-			Texture2D tex = new Texture2D(spriteWidth * spriteNames.Length, spriteHeight, TextureFormat.ARGB32, false);
-			tex.filterMode = FilterMode.Bilinear;
+		public override void OnCreated(IThreading threading) {
+			Instance = this;
+		}
 
-			{ // LoadTexture
-				System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-				System.IO.Stream textureStream = assembly.GetManifestResourceStream("Crossings." + textureFile);
+		public override void OnReleased() {
+			ui.DestroyView();
+		}
 
-				byte[] buf = new byte[textureStream.Length];  //declare arraysize
-				textureStream.Read(buf, 0, buf.Length); // read from stream to byte array
+		public override void OnUpdate(float realTimeDelta, float simulationTimeDelta) {
+			if (loadingLevel)
+				return;
 
-				tex.LoadImage(buf);
-
-				tex.Apply(true, true);
+			if (!ui.isVisible) {
+				ui.Show ();
 			}
-
-			UITextureAtlas atlas = ScriptableObject.CreateInstance<UITextureAtlas>();
-
-			{ // Setup atlas
-				Material material = (Material)Material.Instantiate(baseMaterial);
-				material.mainTexture = tex;
-
-				atlas.material = material;
-				atlas.name = atlasName;
-			}
-
-			// Add sprites
-			for (int i = 0; i < spriteNames.Length; ++i) {
-				float uw = 1.0f / spriteNames.Length;
-
-				var spriteInfo = new UITextureAtlas.SpriteInfo() {
-					name = spriteNames[i],
-					texture = tex,
-					region = new Rect(i * uw, 0, uw, 1),
-				};
-
-				atlas.AddSprite(spriteInfo);
-			}
-
-			return atlas;
 		}
 
 	}
+
+
 
 
 

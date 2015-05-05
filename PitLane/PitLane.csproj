@@ -53,9 +53,10 @@
     <Compile Include="PitLane.cs" />
     <Compile Include="RaceCarAI.cs" />
     <Compile Include="UIUtils.cs" />
+    <Compile Include="PitLaneUI.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <None Include="buttons.png" />
+    <EmbeddedResource Include="buttons.png" />
   </ItemGroup>
 </Project>
