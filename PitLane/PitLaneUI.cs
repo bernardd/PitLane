@@ -15,6 +15,7 @@ namespace PitLane
 		UITabstrip publicTransportTabstrip;
 		UITabContainer publicTransportContainer;
 		UIButton pitLaneButton;
+		UIPanel pitLanePanel;
 
 		public bool isVisible { get; private set; }
 
@@ -29,14 +30,6 @@ namespace PitLane
 			publicTransportTabstrip = UIUtils.Instance.FindComponent<UITabstrip> ("GroupToolstrip", publicTransportPanel, UIUtils.FindOptions.NameContains);
 			publicTransportContainer = UIUtils.Instance.FindComponent<UITabContainer> ("GTSContainer", publicTransportPanel, UIUtils.FindOptions.NameContains);
 
-			// Discovery only:
-			foreach (UIComponent c in publicTransportPanel.components) {
-				Debug.Log ("Name: " + c.name + " " + c.GetType());
-				foreach (UIComponent d in c.components) {
-					Debug.Log ("***Name: " + d.name + " " + d.GetType());
-				}
-			}
-			//
 
 			pitLaneButton = UIUtils.Instance.FindComponent<UIButton>("PitLaneButton");
 			if (pitLaneButton != null) {
@@ -45,21 +38,79 @@ namespace PitLane
 
 			CreateView();
 			if (pitLaneButton == null) return false; 
+	
+			// Discovery only:
+			DiscoverUI(publicTransportPanel, 0);
+			//
 
 			return true;
 		}		
+
+		void DiscoverUI(UIComponent c, int level) {
+			string stars = "";
+			for (int i = 0; i < level; i++)
+				stars += "*";
+			Debug.Log (stars + "Name: " + c.name + " : " + c.GetType());
+			if (c is UIButton) {
+				UIButton b = (UIButton)c;
+				Debug.Log (stars + "--Button sprites: " + b.normalBgSprite + " " + b.normalFgSprite);
+				Debug.Log (stars + "         atlas: " + b.atlas.name);
+				Debug.Log (stars + "         other: " + b.relativePosition + " / " + b.absolutePosition);
+				Debug.Log (stars + "         other: " + b.width + " / " + b.height);
+			}
+			foreach (UIComponent d in c.components) {
+				DiscoverUI (d, level +1);
+			}
+		}
 
 		void CreateView() {
 			Debug.Log("Creating view");
 
 			pitLaneButton = publicTransportTabstrip.AddUIComponent<PitLaneButton>();
+
+			UIPanel busPanel = UIUtils.Instance.FindComponent<UIPanel> ("PublicTransportBusPanel", null, UIUtils.FindOptions.NameContains);
+
+			pitLanePanel = publicTransportContainer.AddUIComponent<UIPanel> ();
+			pitLanePanel.autoFitChildrenHorizontally = true;
+			pitLanePanel.autoLayout = true;
+			pitLanePanel.autoLayoutPadding = new RectOffset (0, 0, 20, 0);
+
+			//UIScrollablePanel scrollPanel = pitLanePanel.AddUIComponent<UIScrollablePanel> ();
+			//UIScrollbar scrollBar = pitLanePanel.AddUIComponent<UIScrollbar> ();
+
+			UIButton pitButton = pitLanePanel.AddUIComponent<UIButton> ();
+			UIButton courseButton = pitLanePanel.AddUIComponent<UIButton> ();
+
+			pitButton.atlas = courseButton.atlas = UIView.GetAView ().defaultAtlas;
+
+			pitButton.name = "PitButton";
+			pitButton.normalFgSprite = pitButton.pressedFgSprite = "ThumbnailTrophy";
+			pitButton.eventClick += PitButtonClickHandler;
+			pitButton.autoSize = true;
+
+			courseButton.name = "CourseButton";
+			courseButton.normalFgSprite = courseButton.pressedFgSprite = "ThumbnailJunctionsClover"; // Route icon
+			courseButton.eventClick += CourseButtonClickHandler;
+			courseButton.autoSize = true;
+			courseButton.relativePosition = new Vector3 (0, -20);
+		}
+
+		void PitButtonClickHandler(UIComponent button, UIMouseEventParameter evt)
+		{
+			Debug.Log ("Pit Button!");
+		}
+
+		void CourseButtonClickHandler(UIComponent button, UIMouseEventParameter evt)
+		{
+			Debug.Log ("Course Button!");
 		}
 
 		public void DestroyView() {
-			if (pitLaneButton != null) {
+	/*		if (pitLaneButton != null) {
 				UIView.Destroy(pitLaneButton);
 				pitLaneButton = null;
 			}
+			*/ // Hopefully cleaned up by parents?
 		}
 
 		bool initialized {
@@ -79,68 +130,30 @@ namespace PitLane
 	public class PitLaneButton : UIButton {
 		PitLaneButton() {
 			name = "PitLaneButton";
-			tooltip = "Pit Lane management";
+			tooltip = "Pit Lane";
 
 			string[] spriteNames = {
 				"PitLaneButtonBg", 
 				"PitLaneButtonBgHovered", 
 				"PitLaneButtonBgPressed", 
-				//		"CrossingsIcon", 
-				//		"CrossingsIconPressed", 
+				"PitLaneIcon",
+				"PitLaneIconPressed", 
 			};
 
-			atlas = CreateTextureAtlas("buttons.png", "PitLaneUI", atlas.material, 64, 25, spriteNames);
+			atlas = UIUtils.CreateTextureAtlas("buttons.png", "PitLaneUI", atlas.material, 60, 25, spriteNames);
 
 			normalBgSprite = "PitLaneButtonBg";
 			disabledBgSprite = "PitLaneButtonBg";
 			hoveredBgSprite = "PitLaneButtonBgHovered";
 			pressedBgSprite = "PitLaneButtonBgPressed";
 			focusedBgSprite = "PitLaneButtonBgPressed";
+			normalFgSprite = "PitLaneIcon";
+			pressedFgSprite = "PitLaneIconPressed";
 
-			relativePosition = new Vector3(323, -25);
-			width = 64;
+			width = 60;
 		}
 
-		UITextureAtlas CreateTextureAtlas(string textureFile, string atlasName, Material baseMaterial, int spriteWidth, int spriteHeight, string[] spriteNames) {
 
-			Texture2D tex = new Texture2D(spriteWidth * spriteNames.Length, spriteHeight, TextureFormat.ARGB32, false);
-			tex.filterMode = FilterMode.Bilinear;
-			{ // LoadTexture
-				System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-				System.IO.Stream textureStream = assembly.GetManifestResourceStream("PitLane." + textureFile);
-
-				byte[] buf = new byte[textureStream.Length];  //declare arraysize
-				textureStream.Read(buf, 0, buf.Length); // read from stream to byte array
-
-				tex.LoadImage(buf);
-
-				tex.Apply(true, true);
-			}
-			UITextureAtlas atlas = ScriptableObject.CreateInstance<UITextureAtlas>();
-
-			{ // Setup atlas
-				Material material = (Material)Material.Instantiate(baseMaterial);
-				material.mainTexture = tex;
-
-				atlas.material = material;
-				atlas.name = atlasName;
-			}
-
-			// Add sprites
-			for (int i = 0; i < spriteNames.Length; ++i) {
-				float uw = 1.0f / spriteNames.Length;
-
-				var spriteInfo = new UITextureAtlas.SpriteInfo() {
-					name = spriteNames[i],
-					texture = tex,
-					region = new Rect(i * uw, 0, uw, 1),
-				};
-
-				atlas.AddSprite(spriteInfo);
-			}
-
-			return atlas;
-		}
 
 	}
 
