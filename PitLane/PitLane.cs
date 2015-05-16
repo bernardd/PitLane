@@ -8,7 +8,7 @@ namespace PitLane
 {
 	public class PitLaneInfo : IUserMod {
 		public string Name {
-			get { return "Race Pit Lane"; }
+			get { return "Pit Lane"; }
 		} 
 
 		public string Description {
@@ -17,6 +17,24 @@ namespace PitLane
 	}
 
 	public class Loader : LoadingExtensionBase {
+		public static PitLaneUI ui = new PitLaneUI();
+		public static bool loadingLevel = false;
+
+		public override void OnLevelUnloading() {
+			base.OnLevelUnloading ();
+			ui.DestroyView();
+			loadingLevel = true;
+		}
+
+		public override void OnLevelLoaded(LoadMode mode) {
+			base.OnLevelLoaded (mode);
+			loadingLevel = false;
+			if (ui.isVisible)
+				ui.DestroyView ();
+
+			ui.Show ();
+			Debug.Log("OnLevelLoaded");
+		}
 
 		public override void OnCreated(ILoading loading)
 		{
@@ -26,37 +44,19 @@ namespace PitLane
 			Debug.Log ("OnCreated() complete");
 		}
 
-	}
-	public class ThreadingExtension : ThreadingExtensionBase {
-		public static ThreadingExtension Instance { get; private set; }
-
-		PitLaneUI ui = new PitLaneUI();
-		bool loadingLevel = false;
-
-		public void OnLevelUnloading() {
-			ui.DestroyView();
-			loadingLevel = true;
-		}
-
-		public void OnLevelLoaded(LoadMode mode) {
-			loadingLevel = false;
-			Debug.Log("OnLevelLoaded");
-		}
-
-		public override void OnCreated(IThreading threading) {
-			Instance = this;
-		}
-
 		public override void OnReleased() {
 			ui.DestroyView();
+			base.OnReleased ();
 		}
 
+	}
+	public class ThreadingExtension : ThreadingExtensionBase {
 		public override void OnUpdate(float realTimeDelta, float simulationTimeDelta) {
-			if (loadingLevel)
+			if (Loader.loadingLevel)
 				return;
 
-			if (!ui.isVisible) {
-				ui.Show ();
+			if (!Loader.ui.isVisible) {
+				Loader.ui.Show ();
 			}
 		}
 
@@ -165,17 +165,8 @@ namespace PitLane
 			}
 		}
 		#endif
-			
-		// NetCollection "Bus Line" NetInfo
- 		// BuildingCollection "Bus Depot" BuildingInfo
-		T TryGetComponent<T>(string name)
-		{
-			GameObject go = GameObject.Find (name);
-			if (go != null)
-				return go.GetComponent<T> ();
-			
-			return default(T);
-		}
+
 	}
+
 }
 
